@@ -1,0 +1,563 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Pipeline SDR Closer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Instrument+Sans:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+html,body{margin:0}[hidden]{display:none!important}img{max-width:100%}
+/* Layout: barra superior + abas por função; SDR = formulário em seções + lista lateral; Closer = fila + ficha; Atendimentos = tabela consultável */
+:root{
+  --bg:#f2f5f4; --surface:#ffffff; --surface-2:#f7faf9; --ink:#13201c; --muted:#5a6a65; --line:#dbe3e0;
+  --accent:#0d6b5a; --accent-ink:#ffffff; --accent-soft:#e1f0eb;
+  --amber:#a8620a; --amber-soft:#fbefdc; --blue:#2c5bb8; --blue-soft:#e4ecfb; --ok:#237a3b; --ok-soft:#e2f3e6; --bad:#b3261e; --bad-soft:#fbe5e3;
+  --f-display:"Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --f-body:"Instrument Sans", "Segoe UI", system-ui, sans-serif;
+  --f-mono:"JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+  --r:10px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0f1514; --surface:#161f1d; --surface-2:#1b2523; --ink:#e6eeeb; --muted:#94a6a0; --line:#2a3734;
+  --accent:#3fb69c; --accent-ink:#06201a; --accent-soft:#163a32;
+  --amber:#e9a54a; --amber-soft:#3a2a13; --blue:#86a8f0; --blue-soft:#1b2843; --ok:#6fcf8a; --ok-soft:#173222; --bad:#f08a82; --bad-soft:#3d1a18;
+  color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0f1514; --surface:#161f1d; --surface-2:#1b2523; --ink:#e6eeeb; --muted:#94a6a0; --line:#2a3734;
+  --accent:#3fb69c; --accent-ink:#06201a; --accent-soft:#163a32;
+  --amber:#e9a54a; --amber-soft:#3a2a13; --blue:#86a8f0; --blue-soft:#1b2843; --ok:#6fcf8a; --ok-soft:#173222; --bad:#f08a82; --bad-soft:#3d1a18;
+  color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.5}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--surface)}
+h1,h2,h3{font-family:var(--f-display);margin:0;text-wrap:balance;letter-spacing:-.01em}
+.wrap{max-width:1240px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+
+/* barra */
+header.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--surface);border-bottom:1px solid var(--line)}
+.top .wrap{display:flex;align-items:center;gap:16px;flex-wrap:wrap;padding-block:12px}
+.brand{display:flex;align-items:center;gap:10px;margin-right:auto}
+.mark{width:30px;height:30px;border-radius:8px;background:var(--accent);display:grid;place-items:center;color:var(--accent-ink);font-family:var(--f-mono);font-size:12px}
+.brand h1{font-size:19px}
+.brand small{display:block;color:var(--muted);font-size:12px;letter-spacing:.06em;text-transform:uppercase}
+nav.tabs{display:flex;gap:4px;background:var(--surface-2);border:1px solid var(--line);border-radius:999px;padding:3px}
+nav.tabs button{border:0;background:none;padding:6px 14px;border-radius:999px;cursor:pointer;color:var(--muted);font-weight:500}
+nav.tabs button[aria-current="true"]{background:var(--accent);color:var(--accent-ink)}
+.me{display:flex;align-items:center;gap:10px;font-size:14px}
+.role{font-size:11px;letter-spacing:.08em;text-transform:uppercase;padding:2px 8px;border-radius:999px;font-weight:600}
+.role.sdr{background:var(--blue-soft);color:var(--blue)} .role.closer{background:var(--amber-soft);color:var(--amber)}
+
+/* controles */
+.btn{border:1px solid var(--line);background:var(--surface);padding:9px 16px;border-radius:8px;cursor:pointer;font-weight:600}
+.btn:hover{border-color:var(--muted)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.primary:hover{filter:brightness(1.07)}
+.btn.ghost{border-color:transparent;background:none;color:var(--muted);padding:6px 10px}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+label{display:flex;flex-direction:column;gap:5px;font-size:13px;font-weight:600;color:var(--muted);min-width:0}
+label .hint{font-weight:400;font-size:12px}
+input,select,textarea{background:var(--surface-2);border:1px solid var(--line);border-radius:8px;padding:9px 11px;font-weight:400;color:var(--ink);width:100%;min-width:0}
+textarea{resize:vertical;min-height:84px}
+input:focus,select:focus,textarea:focus{border-color:var(--accent);outline:none;box-shadow:0 0 0 3px var(--accent-soft)}
+
+main{padding-block:24px 64px}
+.view{display:grid;gap:20px}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--r)}
+.panel-h{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:16px 20px;border-bottom:1px solid var(--line)}
+.panel-h h2{font-size:18px}
+.panel-b{padding:20px}
+.eyebrow{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:600}
+
+/* SDR */
+.sdr-grid{display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:20px;align-items:start}
+fieldset{border:0;margin:0;padding:0 0 22px;display:grid;gap:14px}
+fieldset+fieldset{border-top:1px dashed var(--line);padding-top:20px}
+legend{padding:0;margin-bottom:4px;font-family:var(--f-display);font-size:15px;font-weight:600;color:var(--ink);display:flex;gap:8px;align-items:center}
+legend .n{font-family:var(--f-mono);font-size:11px;color:var(--accent);background:var(--accent-soft);border-radius:5px;padding:1px 6px}
+.row{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(180px,1fr))}
+.row.c3{grid-template-columns:2fr 1.4fr 90px}
+.suffix{position:relative}
+.suffix input{padding-right:34px}
+.suffix span{position:absolute;right:11px;top:50%;transform:translateY(-50%);color:var(--muted);font-family:var(--f-mono);font-size:13px}
+.actions{display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end;padding:16px 20px;border-top:1px solid var(--line);background:var(--surface-2);border-radius:0 0 var(--r) var(--r)}
+.schedule{display:grid;gap:12px;padding:16px 20px;border-top:1px solid var(--line);background:var(--accent-soft)}
+.schedule .row{grid-template-columns:repeat(auto-fit,minmax(170px,1fr))}
+
+.list{display:flex;flex-direction:column}
+.item{display:grid;gap:4px;padding:14px 20px;border-bottom:1px solid var(--line);cursor:pointer;background:none;border-left:3px solid transparent;text-align:left;border-top:0;border-right:0;width:100%}
+.item:hover{background:var(--surface-2)}
+.item[aria-selected="true"]{background:var(--surface-2);border-left-color:var(--accent)}
+.item .t{display:flex;justify-content:space-between;gap:8px;align-items:center;font-weight:600;color:var(--ink)}
+.item .s{font-size:13px;color:var(--muted)}
+.chip{font-size:11px;font-weight:600;letter-spacing:.04em;padding:2px 8px;border-radius:999px;white-space:nowrap}
+.chip.rascunho{background:var(--surface-2);color:var(--muted);border:1px solid var(--line)}
+.chip.agendada{background:var(--amber-soft);color:var(--amber)}
+.chip.atendida{background:var(--ok-soft);color:var(--ok)}
+.chip.fechou{background:var(--ok-soft);color:var(--ok)}
+.chip.perdido{background:var(--bad-soft);color:var(--bad)}
+.chip.negociacao{background:var(--blue-soft);color:var(--blue)}
+.empty{padding:28px 20px;color:var(--muted);font-size:14px;text-align:center}
+
+/* Closer */
+.closer-grid{display:grid;grid-template-columns:330px minmax(0,1fr);gap:20px;align-items:start}
+.kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));border-bottom:1px solid var(--line)}
+.kpi{padding:16px 20px;border-right:1px solid var(--line);min-width:0}
+.kpi:last-child{border-right:0}
+.kpi b{display:block;font-family:var(--f-mono);font-size:19px;font-weight:500;margin-top:2px;overflow-wrap:anywhere}
+dl.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:0;margin:0}
+dl.facts div{padding:12px 20px;border-bottom:1px solid var(--line);min-width:0}
+dl.facts dt{font-size:12px;color:var(--muted);font-weight:600;letter-spacing:.03em}
+dl.facts dd{margin:2px 0 0;overflow-wrap:anywhere;white-space:pre-wrap}
+.long{padding:16px 20px;border-bottom:1px solid var(--line);display:grid;gap:4px}
+.long p{margin:0;white-space:pre-wrap;overflow-wrap:anywhere}
+.notes{padding:20px;display:grid;gap:12px;background:var(--surface-2)}
+.notes textarea{min-height:220px;background:var(--surface)}
+.notes .row{grid-template-columns:repeat(auto-fit,minmax(200px,1fr))}
+.meta{font-size:13px;color:var(--muted)}
+
+/* Atendimentos */
+.filters{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.filters input{width:260px;max-width:100%}
+.filters select{width:auto}
+.tablebox{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:14px;min-width:820px}
+th{text-align:left;font-size:12px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);font-weight:600;padding:10px 16px;border-bottom:1px solid var(--line);background:var(--surface-2)}
+td{padding:12px 16px;border-bottom:1px solid var(--line);vertical-align:top}
+tbody tr{cursor:pointer}
+tbody tr:hover td{background:var(--surface-2)}
+.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:0}
+.stat{padding:14px 20px;border-right:1px solid var(--line)}
+.stat:last-child{border-right:0}
+.stat b{display:block;font-family:var(--f-mono);font-size:24px;font-weight:500}
+
+/* detalhe sobreposto */
+.overlay{position:fixed;inset:0;background:rgba(10,20,17,.45);z-index:20;display:flex;justify-content:flex-end}
+.drawer{background:var(--surface);width:min(720px,100%);height:100%;overflow-y:auto;border-left:1px solid var(--line);padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);padding-right:env(safe-area-inset-right,0px)}
+
+/* login */
+.auth{min-height:100%;display:grid;place-items:center;padding-block:48px}
+.auth-card{width:min(440px,100%)}
+.auth-card .panel-b{display:grid;gap:14px}
+.seg{display:grid;grid-template-columns:1fr 1fr;gap:4px;background:var(--surface-2);border:1px solid var(--line);border-radius:8px;padding:3px}
+.seg button{border:0;background:none;padding:8px;border-radius:6px;cursor:pointer;font-weight:600;color:var(--muted)}
+.seg button[aria-pressed="true"]{background:var(--surface);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.08)}
+.roles{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.roles label{flex-direction:row;align-items:flex-start;gap:10px;border:1px solid var(--line);border-radius:8px;padding:12px;cursor:pointer;color:var(--ink)}
+.roles input{width:auto;margin-top:3px;accent-color:var(--accent)}
+.roles label:has(input:checked){border-color:var(--accent);background:var(--accent-soft)}
+.roles small{display:block;color:var(--muted);font-weight:400}
+.msg{font-size:13px;padding:9px 12px;border-radius:8px}
+.msg.err{background:var(--bad-soft);color:var(--bad)}
+.msg.info{background:var(--accent-soft);color:var(--accent)}
+.banner{background:var(--amber-soft);color:var(--amber);padding:10px 14px;border-radius:8px;font-size:14px}
+
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:10px 18px;border-radius:8px;font-weight:600;z-index:30;font-size:14px;max-width:calc(100% - 32px)}
+
+@media (max-width:960px){
+  .sdr-grid,.closer-grid{grid-template-columns:minmax(0,1fr)}
+  .kpis,.stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .kpi:nth-child(2),.stat:nth-child(2){border-right:0}
+  .kpi:nth-child(-n+2),.stat:nth-child(-n+2){border-bottom:1px solid var(--line)}
+}
+@media (max-width:520px){
+  .row.c3{grid-template-columns:1fr 90px}
+  .row.c3 label:first-child{grid-column:1/-1}
+  .roles{grid-template-columns:1fr}
+  nav.tabs{width:100%;overflow-x:auto}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+
+
+<div id="app">
+  <div class="auth wrap"><div class="auth-card panel"><div class="panel-b"><p class="meta">Carregando o painel…</p></div></div></div>
+</div>
+<div id="toast" class="toast" hidden></div>
+
+<script>
+const UFS="AC AL AP AM BA CE DF ES GO MA MT MS MG PA PB PR PE PI RJ RN RS RO RR SC SP SE TO".split(" ");
+const STATUS={rascunho:"Em qualificação",agendada:"Reunião marcada",atendida:"Atendido"};
+const RESULT={negociacao:"Em negociação",fechou:"Fechou",perdido:"Perdido",remarcar:"Remarcar"};
+const S={token:null,ready:false,equipe:[],fichas:[],me:null,tab:null,editId:null,closerSel:null,filtro:{q:"",st:"",who:""},detail:null,authMode:"entrar",authErr:""};
+
+const $=s=>document.querySelector(s);
+const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const dash=v=>(v===undefined||v===null||String(v).trim()==="")?"—":esc(v);
+function slug(s){return s.normalize("NFD").replace(/[̀-ͯ]/g,"").toLowerCase().trim().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"")}
+function titleCase(s){return s.trim().toLowerCase().replace(/\s+/g," ").split(" ").map(w=>w.charAt(0).toUpperCase()+w.slice(1)).join(" ")}
+async function hash(t){const b=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(t));return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,"0")).join("")}
+function fmtDT(iso){if(!iso)return"—";const d=new Date(iso);if(isNaN(d))return"—";return d.toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit",year:"2-digit"})+" "+d.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})}
+function toast(t){const el=$("#toast");el.textContent=t;el.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(()=>el.hidden=true,2600)}
+function sess(set){try{if(set===undefined)return JSON.parse(sessionStorage.getItem("pc_me")||"null");if(set===null)sessionStorage.removeItem("pc_me");else sessionStorage.setItem("pc_me",JSON.stringify(set))}catch(e){return null}}
+
+/* ---------- dados (Supabase) ---------- */
+const SB_URL="https://dqdlnywyiiuaeqvpkuek.supabase.co";
+const SB_KEY="sb_publishable_I0FQ1IXsOipjv14n1EXlaQ_oZrHVd7o";
+const ERR={sessao_invalida:"Sua sessão expirou. Entre novamente.",nome_existe:"Já existe um cadastro com esse nome. Use a aba Entrar.",credenciais:"Nome ou senha incorretos.",bloqueado:"Muitas tentativas erradas. Aguarde 15 minutos e tente de novo.",senha_curta:"A senha precisa ter pelo menos 4 caracteres.",nome_incompleto:"Preencha o primeiro e o segundo nome.",apenas_sdr:"Só SDRs podem criar ou editar fichas.",apenas_closer:"Só Closers podem registrar a reunião.",ficha_de_outro_sdr:"Esta ficha foi criada por outro SDR.",closer_invalido:"Escolha um Closer válido.",produto_obrigatorio:"Informe o produto contratado.",resultado_obrigatorio:"Escolha o resultado da reunião."};
+async function rpc(fn,args){
+  let res;
+  try{res=await fetch(SB_URL+"/rest/v1/rpc/"+fn,{method:"POST",headers:{"apikey":SB_KEY,"Authorization":"Bearer "+SB_KEY,"Content-Type":"application/json"},body:JSON.stringify(args||{})})}
+  catch(e){throw {code:"rede",msg:"Sem conexão com o servidor. Verifique a internet."}}
+  const txt=await res.text();let body=null;try{body=txt?JSON.parse(txt):null}catch(e){}
+  if(!res.ok){const m=(body&&body.message)||"";const k=Object.keys(ERR).find(k=>m.includes(k));if(k==="sessao_invalida"){logout(true)}throw {code:k||"erro",msg:k?ERR[k]:"Não foi possível concluir. Tente de novo."}}
+  return body;
+}
+function sess(set){try{if(set===undefined)return JSON.parse(localStorage.getItem("pc_sess")||"null");if(set===null)localStorage.removeItem("pc_sess");else localStorage.setItem("pc_sess",JSON.stringify(set))}catch(e){return null}}
+let lastSig="";
+async function carregar(){
+  if(!S.token)return;
+  try{const d=await rpc("com_dados",{p_token:S.token});const sig=JSON.stringify(d);if(sig!==lastSig){lastSig=sig;S.equipe=d.equipe||[];S.fichas=d.fichas||[];render()}}
+  catch(e){if(e.code==="rede")toast(e.msg)}
+}
+(async function init(){
+  const s=sess();
+  if(s&&s.token){S.token=s.token;try{S.me=await rpc("com_eu",{p_token:s.token});S.tab=S.me.papel}catch(e){S.token=null;S.me=null;sess(null)}}
+  S.ready=true;render();
+  if(S.token)await carregar();
+  setInterval(()=>{if(document.visibilityState==="visible")carregar()},15000);
+  document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")carregar()});
+})();
+
+/* ---------- autenticação ---------- */
+async function doAuth(e){
+  e.preventDefault();
+  const f=e.target, n1=f.n1.value.trim(), n2=f.n2.value.trim(), pw=f.pw.value;
+  S.authErr="";
+  if(!n1||!n2){S.authErr="Preencha o primeiro e o segundo nome.";return render()}
+  if(/\s/.test(n1)||/\s/.test(n2)){S.authErr="Use só um nome em cada campo (ex.: João / Silva).";return render()}
+  if(pw.length<4){S.authErr="A senha precisa ter pelo menos 4 caracteres.";return render()}
+  const btn=f.querySelector("[type=submit]");btn.disabled=true;
+  try{
+    let r;
+    if(S.authMode==="cadastrar"){
+      const papel=f.papel.value;
+      if(!papel){S.authErr="Escolha se você é SDR ou Closer.";btn.disabled=false;return render()}
+      r=await rpc("com_registrar",{p_primeiro:n1,p_segundo:n2,p_senha:pw,p_papel:papel});
+    }else r=await rpc("com_entrar",{p_primeiro:n1,p_segundo:n2,p_senha:pw});
+    S.token=r.token;S.me=r.membro;sess({token:r.token});S.tab=S.me.papel;S.editId=null;lastSig="";
+    render();toast("Bem-vindo, "+S.me.nome.split(" ")[0]);carregar();
+  }catch(err){S.authErr=err.msg;render()}
+}
+function logout(silent){const t=S.token;S.token=null;S.me=null;S.tab=null;S.detail=null;S.fichas=[];S.equipe=[];lastSig="";sess(null);if(t&&!silent)rpc("com_sair",{p_token:t}).catch(()=>{});render();if(silent)toast("Sua sessão expirou. Entre novamente.")}
+
+/* ---------- ações SDR ---------- */
+const FIELDS=["cliente","telefone","cidade","uf","segmento","cmv","funcionarios","sociedade","socios","faturamento","tempoOperacao","tempoEntrega","dificuldade","interesse","evolucao"];
+function readForm(){const f=$("#ficha");const o={};FIELDS.forEach(k=>o[k]=(f[k]?.value||"").trim());return o}
+async function saveFicha(agendar){
+  const f=$("#ficha");
+  const data=readForm();
+  if(!data.cliente||!data.telefone){toast("Informe ao menos nome do cliente e número");return}
+  let cId=null,quando=null;
+  if(agendar){
+    cId=f.closerId.value;quando=f.reuniaoEm.value;
+    if(!cId){toast("Escolha o Closer que vai conduzir");return}
+    if(!quando){toast("Informe a data e o horário da reunião");return}
+  }
+  const btns=document.querySelectorAll("#ficha-actions button");btns.forEach(b=>b.disabled=true);
+  try{
+    const r=await rpc("com_salvar_ficha",{p_token:S.token,p_id:S.editId,p_dados:data,p_agendar:agendar,p_closer_id:cId,p_reuniao_em:quando?new Date(quando).toISOString():null});
+    S.editId=agendar?null:r.id;
+    if(agendar)f.remove();
+    toast(agendar?"Reunião marcada. Ficha enviada para "+(r.closer||"o Closer").split(" ")[0]:"Ficha salva");
+    lastSig="";await carregar();
+  }catch(e){toast(e.msg)}
+  btns.forEach(b=>b.disabled=false);
+}
+function newFicha(){S.editId=null;$("#ficha")?.remove();render();$("#ficha [name=cliente]")?.focus()}
+
+/* ---------- ações Closer ---------- */
+async function saveNotes(concluir){
+  const fc=S.fichas.find(x=>x.id===S.closerSel);if(!fc)return;
+  const notas=$("#notas").value, resultado=$("#resultado").value, produto=$("#produto").value.trim();
+  if(concluir&&!resultado){toast("Escolha o resultado da reunião");return}
+  if(concluir&&resultado==="fechou"&&!produto){toast("Informe o produto contratado");return}
+  try{await rpc("com_registrar_reuniao",{p_token:S.token,p_id:fc.id,p_notas:notas,p_resultado:resultado,p_produto:produto,p_concluir:concluir});
+    toast(concluir?"Atendimento concluído e arquivado":"Anotações salvas");if(concluir)$("#notas")?.remove();lastSig="";await carregar()}
+  catch(e){toast(e.msg)}
+}
+
+/* ---------- impressão ---------- */
+function printDoc(x){
+  const r=(l,v)=>`<tr><th>${l}</th><td>${dash(v)}</td></tr>`;
+  const b=(l,v)=>`<h3>${l}</h3><p>${dash(v)}</p>`;
+  return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Ficha - ${esc(x.cliente)}</title>
+<style>body{font-family:Segoe UI,Arial,sans-serif;color:#13201c;max-width:760px;margin:24px auto;padding:0 20px;font-size:13px}
+h1{font-size:22px;margin:0}h2{font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:#0d6b5a;border-bottom:2px solid #0d6b5a;padding-bottom:4px;margin:22px 0 8px}
+h3{font-size:12px;margin:12px 0 2px;color:#5a6a65;text-transform:uppercase;letter-spacing:.05em}p{margin:0;white-space:pre-wrap}
+.sub{color:#5a6a65;margin:4px 0 0}table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:6px 8px;border-bottom:1px solid #dbe3e0;vertical-align:top}th{width:34%;color:#5a6a65;font-weight:600}
+.bar{display:flex;justify-content:flex-end;margin-bottom:12px}.bar button{padding:8px 16px;border:0;border-radius:6px;background:#0d6b5a;color:#fff;font-weight:600;cursor:pointer}
+.box{border:1px solid #dbe3e0;border-radius:6px;padding:10px 12px;min-height:60px}@media print{.bar{display:none}body{margin:0}}</style></head><body>
+<div class="bar"><button onclick="window.print()">Imprimir</button></div>
+<h1>${esc(x.cliente)}</h1><p class="sub">${STATUS[x.status]||""}${x.resultado?" · "+RESULT[x.resultado]:""} · Ficha criada em ${fmtDT(x.criadoEm)}</p>
+<h2>Contato</h2><table>${r("Número",x.telefone)}${r("Cidade / Estado",[x.cidade,x.uf].filter(Boolean).join(" / "))}${r("Segmento",x.segmento)}</table>
+<h2>Números do negócio</h2><table>${r("Faturamento mensal",x.faturamento)}${r("CMV",x.cmv?x.cmv+"%":"")}${r("Funcionários",x.funcionarios)}${r("Tempo de operação",x.tempoOperacao)}${r("Tempo de entrega",x.tempoEntrega)}${r("Sociedade",[x.sociedade,x.socios].filter(Boolean).join(" · "))}</table>
+<h2>Diagnóstico</h2>${b("Principal dificuldade",x.dificuldade)}${b("Interesse",x.interesse)}${b("Evolução do negócio",x.evolucao)}
+<h2>Reunião</h2><table>${r("SDR",x.sdr)}${r("Closer",x.closer)}${r("Data da reunião",x.reuniaoEm?fmtDT(x.reuniaoEm):"")}${r("Resultado",RESULT[x.resultado])}${r("Produto contratado",x.produto)}${r("Atendido em",x.atendidoEm?fmtDT(x.atendidoEm):"")}</table>
+<h3>Anotações do Closer</h3><div class="box"><p>${dash(x.notas)}</p></div>
+</body></html>`;
+}
+function printFicha(id){
+  const x=S.fichas.find(f=>f.id===id);if(!x)return;
+  let fr=document.getElementById("print-frame");if(fr)fr.remove();
+  fr=document.createElement("iframe");fr.id="print-frame";fr.setAttribute("aria-hidden","true");
+  fr.style.cssText="position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden";
+  document.body.appendChild(fr);
+  const d=fr.contentWindow.document;d.open();d.write(printDoc(x));d.close();
+  setTimeout(()=>{try{fr.contentWindow.focus();fr.contentWindow.print()}catch(e){toast("Não foi possível abrir a impressão")}},250);
+}
+const printBtn=id=>`<button class="btn" data-print="${id}">Imprimir ficha</button>`;
+
+/* ---------- render ---------- */
+function render(){
+  const app=$("#app");
+  const active=document.activeElement, keep=active&&active.id?{id:active.id,s:active.selectionStart,e:active.selectionEnd}:null;
+  if(!S.ready){return}
+  if(!S.me){app.innerHTML=authView();bindAuth();return}
+  // preserva rascunho do formulário SDR entre re-renderizações
+  let draft=null;if($("#ficha")&&S.tab==="sdr")draft={...readForm(),closerId:$("#ficha").closerId?.value,reuniaoEm:$("#ficha").reuniaoEm?.value};
+  let notesDraft=null;if($("#notas"))notesDraft={id:S.closerSel,n:$("#notas").value,r:$("#resultado").value,p:$("#produto").value};
+  const tabs=[];
+  if(S.me.papel==="sdr")tabs.push(["sdr","Ficha SDR"]);
+  if(S.me.papel==="closer")tabs.push(["closer","Reuniões"]);
+  tabs.push(["atendimentos","Atendimentos"]);
+  if(!tabs.find(t=>t[0]===S.tab))S.tab=tabs[0][0];
+  app.innerHTML=`
+  <header class="top"><div class="wrap">
+    <div class="brand"><div class="mark">SC</div><div><h1>Pipeline Comercial</h1><small>SDR → Closer</small></div></div>
+    <nav class="tabs" aria-label="Seções">${tabs.map(([k,l])=>`<button data-tab="${k}" aria-current="${S.tab===k}">${l}</button>`).join("")}</nav>
+    <div class="me"><span>${esc(S.me.nome)}</span><span class="role ${S.me.papel}">${S.me.papel==="sdr"?"SDR":"Closer"}</span><button class="btn ghost" id="sair">Sair</button></div>
+  </div></header>
+  <main class="wrap">${S.tab==="sdr"?sdrView(draft):S.tab==="closer"?closerView(notesDraft):atendView()}</main>
+  ${S.detail?detailView():""}`;
+  bindApp();
+  if(keep){const el=document.getElementById(keep.id);if(el){el.focus();try{if(keep.s!=null)el.setSelectionRange(keep.s,keep.e)}catch(e){}}}
+}
+
+function authView(){
+  const cad=S.authMode==="cadastrar";
+  return `<div class="auth wrap"><form class="auth-card panel" id="auth" novalidate>
+    <div class="panel-h" style="border:0;padding-bottom:0"><div class="brand"><div class="mark">SC</div><div><h1>Pipeline Comercial</h1><small>SDR → Closer</small></div></div></div>
+    <div class="panel-b">
+      <div class="seg"><button type="button" data-mode="entrar" aria-pressed="${!cad}">Entrar</button><button type="button" data-mode="cadastrar" aria-pressed="${cad}">Cadastrar</button></div>
+      <div class="row" style="grid-template-columns:1fr 1fr">
+        <label>Primeiro nome<input id="n1" name="n1" autocomplete="given-name" placeholder="João"></label>
+        <label>Segundo nome<input id="n2" name="n2" autocomplete="family-name" placeholder="Silva"></label>
+      </div>
+      <label>Senha<input id="pw" name="pw" type="password" autocomplete="${cad?"new-password":"current-password"}"></label>
+      ${cad?`<div class="roles">
+        <label><input type="radio" name="papel" value="sdr"><span>SDR<small>Qualifica e marca a reunião</small></span></label>
+        <label><input type="radio" name="papel" value="closer"><span>Closer<small>Conduz a reunião e fecha</small></span></label>
+      </div>`:""}
+      ${S.authErr?`<div class="msg err">${esc(S.authErr)}</div>`:""}
+      <button class="btn primary" type="submit">${cad?"Criar cadastro":"Entrar"}</button>
+      <p class="meta" style="margin:0">${cad?"Use apenas o primeiro e o segundo nome. É com eles que você entra depois.":"Entre com o mesmo primeiro e segundo nome do seu cadastro."}</p>
+    </div></form></div>`;
+}
+function bindAuth(){
+  $("#auth").addEventListener("submit",doAuth);
+  document.querySelectorAll("[data-mode]").forEach(b=>b.onclick=()=>{S.authMode=b.dataset.mode;S.authErr="";render()});
+}
+
+function opt(list,v,ph){return (ph?`<option value="">${ph}</option>`:"")+list.map(x=>{const[val,lab]=Array.isArray(x)?x:[x,x];return`<option value="${esc(val)}"${String(v)===String(val)?" selected":""}>${esc(lab)}</option>`}).join("")}
+
+function sdrView(draft){
+  const cur=S.editId?S.fichas.find(x=>x.id===S.editId):null;
+  const v=draft||cur||{};
+  const minhas=S.fichas.filter(x=>x.sdrId===S.me.id).sort((a,b)=>(b.atualizadoEm||"").localeCompare(a.atualizadoEm||""));
+  const closers=S.equipe.filter(x=>x.papel==="closer").sort((a,b)=>a.nome.localeCompare(b.nome));
+  const locked=cur&&cur.status!=="rascunho";
+  return `<div class="sdr-grid">
+  <form class="panel" id="ficha" novalidate>
+    <div class="panel-h"><div><span class="eyebrow">${cur?"Editando ficha":"Nova ficha"}</span><h2>${cur?esc(cur.cliente):"Qualificação do cliente"}</h2></div>${cur?`<div style="display:flex;gap:8px">${printBtn(cur.id)}<button type="button" class="btn" id="nova">+ Nova ficha</button></div>`:""}</div>
+    ${locked?`<div class="panel-b" style="padding-bottom:0"><div class="banner">Esta ficha já foi enviada para ${esc(cur.closer)}. As alterações aparecem na aba do Closer.</div></div>`:""}
+    <div class="panel-b">
+      <fieldset><legend><span class="n">1</span>Contato</legend>
+        <div class="row"><label>Nome do cliente<input id="f-cliente" name="cliente" value="${esc(v.cliente)}" placeholder="Nome do decisor"></label>
+        <label>Número (WhatsApp)<input id="f-telefone" name="telefone" type="tel" inputmode="tel" value="${esc(v.telefone)}" placeholder="(22) 99999-0000"></label></div>
+        <div class="row c3"><label>Cidade<input id="f-cidade" name="cidade" value="${esc(v.cidade)}"></label>
+        <label>Segmento<input id="f-segmento" name="segmento" value="${esc(v.segmento)}" placeholder="Ex.: restaurante, varejo de moda"></label>
+        <label>Estado<select id="f-uf" name="uf">${opt(UFS,v.uf,"UF")}</select></label></div>
+      </fieldset>
+      <fieldset><legend><span class="n">2</span>Números do negócio</legend>
+        <div class="row">
+          <label>Faturamento mensal<input id="f-faturamento" name="faturamento" inputmode="decimal" value="${esc(v.faturamento)}" placeholder="R$ 120.000"></label>
+          <label>CMV<div class="suffix"><input id="f-cmv" name="cmv" inputmode="decimal" value="${esc(v.cmv)}" placeholder="32"><span>%</span></div></label>
+          <label>Funcionários<input id="f-funcionarios" name="funcionarios" type="number" min="0" inputmode="numeric" value="${esc(v.funcionarios)}"></label>
+        </div>
+        <div class="row">
+          <label>Tempo de operação<input id="f-tempoOperacao" name="tempoOperacao" value="${esc(v.tempoOperacao)}" placeholder="Ex.: 4 anos"></label>
+          <label>Tempo de entrega<input id="f-tempoEntrega" name="tempoEntrega" value="${esc(v.tempoEntrega)}" placeholder="Ex.: 7 dias úteis"></label>
+        </div>
+        <div class="row">
+          <label>Sociedade<select id="f-sociedade" name="sociedade">${opt(["Sem sócios","Com sócios"],v.sociedade,"Selecione")}</select></label>
+          <label>Sócios e participação <span class="hint">se houver</span><input id="f-socios" name="socios" value="${esc(v.socios)}" placeholder="Ex.: Ana 50% · Pedro 50%"></label>
+        </div>
+      </fieldset>
+      <fieldset><legend><span class="n">3</span>Diagnóstico</legend>
+        <label>Principal dificuldade<textarea id="f-dificuldade" name="dificuldade" placeholder="O que mais trava o negócio hoje, nas palavras do cliente">${esc(v.dificuldade)}</textarea></label>
+        <label>Interesse<textarea id="f-interesse" name="interesse" placeholder="O que ele quer resolver ou conquistar com a solução">${esc(v.interesse)}</textarea></label>
+        <label>Evolução do negócio<textarea id="f-evolucao" name="evolucao" placeholder="Como chegou até aqui: crescimento, quedas, mudanças recentes">${esc(v.evolucao)}</textarea></label>
+      </fieldset>
+    </div>
+    <div class="schedule">
+      <div><span class="eyebrow" style="color:var(--accent)">Reunião marcada?</span></div>
+      <div class="row">
+        <label>Closer responsável<select id="f-closerId" name="closerId">${closers.length?opt(closers.map(c=>[c.id,c.nome]),v.closerId,"Escolha o Closer"):`<option value="">Nenhum Closer cadastrado</option>`}</select></label>
+        <label>Data e horário<input id="f-reuniaoEm" name="reuniaoEm" type="datetime-local" value="${esc(v.reuniaoEm&&v.reuniaoEm.length>16?toLocalInput(v.reuniaoEm):v.reuniaoEm||"")}"></label>
+      </div>
+    </div>
+    <div class="actions" id="ficha-actions">
+      <button type="button" class="btn" id="salvar">Salvar ficha</button>
+      <button type="button" class="btn primary" id="agendar">${locked?"Atualizar e reenviar ao Closer":"Reunião marcada → enviar ao Closer"}</button>
+    </div>
+  </form>
+  <aside class="panel">
+    <div class="panel-h"><h2>Minhas fichas</h2><span class="meta mono">${minhas.length}</span></div>
+    <div class="list">${minhas.length?minhas.map(x=>`<button class="item" data-edit="${x.id}" aria-selected="${x.id===S.editId}">
+      <span class="t"><span>${esc(x.cliente)}</span><span class="chip ${x.status}">${STATUS[x.status]||x.status}</span></span>
+      <span class="s">${dash(x.segmento)} · ${dash(x.cidade)}${x.uf?"/"+esc(x.uf):""}</span>
+      ${x.status!=="rascunho"?`<span class="s">${esc(x.closer)} · <span class="mono">${fmtDT(x.reuniaoEm)}</span></span>`:""}
+    </button>`).join(""):`<div class="empty">Suas fichas aparecem aqui. Preencha a primeira ao lado e clique em <b>Salvar ficha</b>.</div>`}</div>
+  </aside></div>`;
+}
+function toLocalInput(iso){const d=new Date(iso);if(isNaN(d))return"";const p=n=>String(n).padStart(2,"0");return`${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`}
+
+function fichaBlock(x){
+  return `<div class="kpis">
+      <div class="kpi"><span class="eyebrow">Faturamento</span><b>${dash(x.faturamento)}</b></div>
+      <div class="kpi"><span class="eyebrow">CMV</span><b>${x.cmv?esc(x.cmv)+"%":"—"}</b></div>
+      <div class="kpi"><span class="eyebrow">Funcionários</span><b>${dash(x.funcionarios)}</b></div>
+      <div class="kpi"><span class="eyebrow">Operação</span><b>${dash(x.tempoOperacao)}</b></div>
+    </div>
+    <dl class="facts">
+      <div><dt>Número</dt><dd class="mono">${dash(x.telefone)}</dd></div>
+      <div><dt>Cidade / Estado</dt><dd>${dash(x.cidade)}${x.uf?" / "+esc(x.uf):""}</dd></div>
+      <div><dt>Segmento</dt><dd>${dash(x.segmento)}</dd></div>
+      <div><dt>Tempo de entrega</dt><dd>${dash(x.tempoEntrega)}</dd></div>
+      <div><dt>Sociedade</dt><dd>${dash(x.sociedade)}${x.socios?" · "+esc(x.socios):""}</dd></div>
+      <div><dt>SDR</dt><dd>${dash(x.sdr)}</dd></div>
+    </dl>
+    <div class="long"><span class="eyebrow">Principal dificuldade</span><p>${dash(x.dificuldade)}</p></div>
+    <div class="long"><span class="eyebrow">Interesse</span><p>${dash(x.interesse)}</p></div>
+    <div class="long"><span class="eyebrow">Evolução do negócio</span><p>${dash(x.evolucao)}</p></div>`;
+}
+
+function closerView(nd){
+  const fila=S.fichas.filter(x=>x.status==="agendada").sort((a,b)=>(a.reuniaoEm||"").localeCompare(b.reuniaoEm||""));
+  const minhas=fila.filter(x=>x.closerId===S.me.id), outras=fila.filter(x=>x.closerId!==S.me.id);
+  if(!S.closerSel||!S.fichas.find(x=>x.id===S.closerSel&&x.status==="agendada"))S.closerSel=(minhas[0]||outras[0]||{}).id||null;
+  const x=S.fichas.find(f=>f.id===S.closerSel);
+  const li=f=>`<button class="item" data-sel="${f.id}" aria-selected="${f.id===S.closerSel}">
+     <span class="t"><span>${esc(f.cliente)}</span><span class="mono s">${fmtDT(f.reuniaoEm)}</span></span>
+     <span class="s">${dash(f.segmento)} · SDR ${dash(f.sdr)}${f.closerId!==S.me.id?" · p/ "+esc(f.closer):""}</span></button>`;
+  const same=nd&&nd.id===S.closerSel;
+  const notas=same?nd.n:(x?.notas||""), res=same?nd.r:(x?.resultado||""), prod=same?nd.p:(x?.produto||"");
+  return `<div class="closer-grid">
+  <aside class="panel">
+    <div class="panel-h"><h2>Minhas reuniões</h2><span class="meta mono">${minhas.length}</span></div>
+    <div class="list">${minhas.length?minhas.map(li).join(""):`<div class="empty">Quando um SDR marcar uma reunião para você, ela aparece aqui.</div>`}</div>
+    ${outras.length?`<div class="panel-h" style="border-top:1px solid var(--line)"><span class="eyebrow">Outros Closers</span><span class="meta mono">${outras.length}</span></div><div class="list">${outras.map(li).join("")}</div>`:""}
+  </aside>
+  ${x?`<section class="panel">
+    <div class="panel-h"><div><span class="eyebrow">Reunião · <span class="mono">${fmtDT(x.reuniaoEm)}</span></span><h2>${esc(x.cliente)}</h2></div><div style="display:flex;gap:8px;align-items:center">${printBtn(x.id)}<span class="chip agendada">Reunião marcada</span></div></div>
+    ${fichaBlock(x)}
+    <div class="notes">
+      <label>Anotações da reunião<textarea id="notas" placeholder="Objeções, proposta apresentada, valores, próximos passos, combinados com o cliente…">${esc(notas)}</textarea></label>
+      <div class="row"><label>Resultado<select id="resultado">${opt(Object.entries(RESULT),res,"Selecione")}</select></label>
+        <label>Produto contratado<input id="produto" list="produtos" value="${esc(prod)}" placeholder="Qual produto o cliente fechou"><datalist id="produtos">${[...new Set(S.fichas.map(f=>f.produto).filter(Boolean))].map(p=>`<option value="${esc(p)}">`).join("")}</datalist></label></div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end">
+        <button class="btn" id="salvarNotas">Salvar anotações</button>
+        <button class="btn primary" id="concluir">Concluir atendimento</button>
+      </div>
+      ${x.notasPor?`<span class="meta">Última edição por ${esc(x.notasPor)} em <span class="mono">${fmtDT(x.atualizadoEm)}</span></span>`:""}
+    </div>
+  </section>`:`<section class="panel"><div class="empty" style="padding:64px 20px">Nenhuma reunião na fila no momento.<br>Os atendimentos concluídos ficam na aba <b>Atendimentos</b>.</div></section>`}
+  </div>`;
+}
+
+function atendView(){
+  const F=S.filtro, q=slug(F.q).replace(/-/g," ");
+  let rows=S.fichas.slice().sort((a,b)=>(b.atualizadoEm||"").localeCompare(a.atualizadoEm||""));
+  if(F.st)rows=rows.filter(x=>x.status===F.st);
+  if(F.who)rows=rows.filter(x=>x.sdrId===F.who||x.closerId===F.who);
+  if(q)rows=rows.filter(x=>slug([x.cliente,x.cidade,x.segmento,x.telefone,x.sdr,x.closer].join(" ")).replace(/-/g," ").includes(q));
+  const c=k=>S.fichas.filter(x=>x.status===k).length;
+  const fechou=S.fichas.filter(x=>x.resultado==="fechou").length;
+  return `<section class="panel">
+    <div class="stats">
+      <div class="stat"><span class="eyebrow">Em qualificação</span><b>${c("rascunho")}</b></div>
+      <div class="stat"><span class="eyebrow">Reuniões marcadas</span><b>${c("agendada")}</b></div>
+      <div class="stat"><span class="eyebrow">Atendidos</span><b>${c("atendida")}</b></div>
+      <div class="stat"><span class="eyebrow">Fechamentos</span><b>${fechou}</b></div>
+    </div>
+  </section>
+  <section class="panel">
+    <div class="panel-h"><h2>Atendimentos</h2>
+      <div class="filters">
+        <input id="fq" type="search" placeholder="Buscar cliente, cidade, segmento…" value="${esc(F.q)}">
+        <select id="fst">${opt(Object.entries(STATUS),F.st,"Todos os status")}</select>
+        <select id="fwho">${opt(S.equipe.slice().sort((a,b)=>a.nome.localeCompare(b.nome)).map(u=>[u.id,u.nome+(u.papel==="sdr"?" (SDR)":" (Closer)")]),F.who,"Toda a equipe")}</select>
+      </div></div>
+    <div class="tablebox"><table>
+      <thead><tr><th>Cliente</th><th>Segmento</th><th>Cidade/UF</th><th>SDR</th><th>Closer</th><th>Reunião</th><th>Status</th><th>Resultado</th><th>Produto</th></tr></thead>
+      <tbody>${rows.length?rows.map(x=>`<tr data-open="${x.id}" tabindex="0">
+        <td><b>${esc(x.cliente)}</b><br><span class="meta mono">${dash(x.telefone)}</span></td>
+        <td>${dash(x.segmento)}</td><td>${dash(x.cidade)}${x.uf?"/"+esc(x.uf):""}</td>
+        <td>${dash(x.sdr)}</td><td>${dash(x.closer)}</td>
+        <td class="mono">${x.reuniaoEm?fmtDT(x.reuniaoEm):"—"}</td>
+        <td><span class="chip ${x.status}">${STATUS[x.status]||x.status}</span></td>
+        <td>${x.resultado?`<span class="chip ${x.resultado}">${RESULT[x.resultado]}</span>`:"—"}</td><td>${dash(x.produto)}</td></tr>`).join(""):`<tr><td colspan="9"><div class="empty">${S.fichas.length?"Nenhum atendimento com esses filtros.":"Ainda não há atendimentos. As fichas criadas pelos SDRs aparecem aqui automaticamente."}</div></td></tr>`}</tbody>
+    </table></div>
+  </section>`;
+}
+
+function detailView(){
+  const x=S.fichas.find(f=>f.id===S.detail);if(!x)return"";
+  return `<div class="overlay" id="ov"><div class="drawer" role="dialog" aria-label="Ficha de ${esc(x.cliente)}">
+    <div class="panel-h"><div><span class="eyebrow">${STATUS[x.status]||""}${x.resultado?" · "+RESULT[x.resultado]:""}</span><h2>${esc(x.cliente)}</h2></div><div style="display:flex;gap:8px">${printBtn(x.id)}<button class="btn" id="fechar">Fechar</button></div></div>
+    ${fichaBlock(x)}
+    <dl class="facts">
+      <div><dt>Closer</dt><dd>${dash(x.closer)}</dd></div>
+      <div><dt>Produto contratado</dt><dd><b>${dash(x.produto)}</b></dd></div>
+      <div><dt>Reunião</dt><dd class="mono">${fmtDT(x.reuniaoEm)}</dd></div>
+      <div><dt>Ficha criada</dt><dd class="mono">${fmtDT(x.criadoEm)}</dd></div>
+      <div><dt>Atendido em</dt><dd class="mono">${fmtDT(x.atendidoEm)}</dd></div>
+    </dl>
+    <div class="long" style="background:var(--surface-2)"><span class="eyebrow">Anotações do Closer</span><p>${dash(x.notas)}</p></div>
+  </div></div>`;
+}
+
+function bindApp(){
+  document.querySelectorAll("[data-tab]").forEach(b=>b.onclick=()=>{S.tab=b.dataset.tab;render()});
+  $("#sair").onclick=logout;
+  document.querySelectorAll("[data-print]").forEach(b=>b.onclick=e=>{e.stopPropagation();printFicha(b.dataset.print)});
+  if(S.tab==="sdr"){
+    $("#salvar").onclick=()=>saveFicha(false);
+    $("#agendar").onclick=()=>saveFicha(true);
+    $("#nova")&&($("#nova").onclick=newFicha);
+    document.querySelectorAll("[data-edit]").forEach(b=>b.onclick=()=>{S.editId=b.dataset.edit;const keep=$("#ficha");if(keep)keep.remove();render();window.scrollTo({top:0})});
+  }
+  if(S.tab==="closer"){
+    document.querySelectorAll("[data-sel]").forEach(b=>b.onclick=()=>{S.closerSel=b.dataset.sel;$("#notas")?.remove();render()});
+    $("#salvarNotas")&&($("#salvarNotas").onclick=()=>saveNotes(false));
+    $("#concluir")&&($("#concluir").onclick=()=>saveNotes(true));
+  }
+  if(S.tab==="atendimentos"){
+    $("#fq").oninput=e=>{S.filtro.q=e.target.value;render()};
+    $("#fst").onchange=e=>{S.filtro.st=e.target.value;render()};
+    $("#fwho").onchange=e=>{S.filtro.who=e.target.value;render()};
+    document.querySelectorAll("[data-open]").forEach(r=>{r.onclick=()=>{S.detail=r.dataset.open;render()};r.onkeydown=e=>{if(e.key==="Enter"){S.detail=r.dataset.open;render()}}});
+  }
+  if(S.detail){$("#fechar").onclick=()=>{S.detail=null;render()};$("#ov").onclick=e=>{if(e.target.id==="ov"){S.detail=null;render()}}}
+}
+document.addEventListener("keydown",e=>{if(e.key==="Escape"&&S.detail){S.detail=null;render()}});
+</script>
+
+</body>
+</html>
